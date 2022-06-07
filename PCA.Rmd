@@ -1,0 +1,280 @@
+---
+title: "PCA"
+author: "Omar Sanchez Hernandez"
+date: '2022-03-28'
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Análisis de componentes principales
+
+## Introducción 
+El análisis de componentes o (PCA) es una técnica estadística que se encarga de describir un conjunto de datos con nuevas variables, por lo general los componentes se ordenan por sus respectivas varianzas, por lo que esta técnica es útil cuando es necesario reducir la dimensionalidad de nuestros datos.
+
+## Selección de los datos para la realización del ejemplo
+
+1-. Se seleccionó la base llamada *"flores"*, datos extraidos de la paqueteria *"datos"*
+```{r, warning=FALSE, message=FALSE}
+#install.packages("datos",dependencies=T)
+library(datos)
+x <- flores
+```
+
+## Exploracion de la matriz 
+
+1-. Dimensión de la matriz
+
+```{r, warning=FALSE, message=FALSE}
+dim(x)
+```
+
+2-. Exploracion de las variables 
+
+```{r, warning=FALSE, message=FALSE}
+str(x)
+```
+
+3-. Nombre de las variables 
+
+```{r, warning=FALSE, message=FALSE}
+colnames(x)
+```
+
+4-.Se verifica que no existan datos perdidos 
+
+```{r, warning=FALSE, message=FALSE}
+anyNA(x)
+```
+
+## Creación de un nuevo data frame solo con las variables cuantitativas
+
+Instalación de un paquete para la manipulación de dataframes
+
+```{r, warning=FALSE, message=FALSE}
+#install.packages("dplyr") 
+library(dplyr)
+```
+
+1-. Creación de un nuevo data frame 
+
+```{r, warning=FALSE, message=FALSE}
+datos2 <- select(flores, Largo.Sepalo, Ancho.Sepalo, Largo.Petalo, Ancho.Petalo)
+x<-as.data.frame(datos2)
+```
+
+## Tratamiento de matriz
+
+Se genera una nueva matriz **x1** con los datos de solo una especie, en este caso la especie "Versicolor"..
+
+1 Seleccion de las nuevas variables.
+```{r}
+x1 <- x[51:100,1:4]
+```
+
+# ACP paso a paso 
+
+1 se transforma la nueva matriz a un data frame 
+
+```{r}
+x1 <- as.data.frame(x1)
+```
+
+2- Definir _n_ (individuos) y _p_ (variables)
+
+```{r}
+n<-dim(x)[1]
+p<-dim(x)[2]
+```
+
+3- Generar grafico 
+
+```{r}
+pairs(x1,col="chartreuse", pch=19, 
+      main="Variables originales")
+```
+
+4.- Obtención de la media por columna  
+
+```{r}
+mu<-colMeans(x1)
+mu
+```
+
+5-. la matriz de covarianza muestral
+
+```{r}
+s<-cov(x1)
+s
+```
+
+6-. Obtencion de los *valores* y *vectores* propios desde la matriz de covarianza muestral 
+```{r}
+es<-eigen(s)
+es
+```
+
+6.1-. Separación de la matriz de valores propios 
+
+```{r}
+eigen.val<-es$values
+eigen.val
+```
+
+6.2-. Separacion de matrices de vectores propios
+
+```{r}
+eigen.vec<-es$vectors
+eigen.vec
+```
+
+7- Calcular la proporcion de la variabilidad
+
+7.1- Para la matriz de valores propios
+
+```{r}
+pro.var<-eigen.val/sum(eigen.val)
+pro.var
+```
+
+7.2- variabilidad acumulada
+
+```{r}
+pro.var.acum<-cumsum(eigen.val)/sum(eigen.val)
+pro.var.acum
+```
+
+8-. obtencion de la matriz de correlaciones
+
+```{r}
+R<-cor(x1)
+R
+```
+
+9-. Obtencion de los valores y vectores propios a partir de la **matriz de correlaciones**
+```{r}
+eR<-eigen(R)
+eR
+```
+
+10-. Separacion de la matriz de valores propios 
+
+10.1- Separación de la matriz de valores propios 
+
+```{r}
+eigen.val.R<-eR$values
+eigen.val.R
+```
+
+10.2- Separacion de matrices de vectores propios
+
+```{r}
+eigen.vec.R<-eR$vectors
+eigen.vec.R
+```
+
+11- Cálculo de la proporcion de variabilidad 
+
+
+11.1- Para la matriz de valores propios
+
+```{r}
+pro.var.R<-eigen.val/sum(eigen.val)
+pro.var.R
+```
+
+11.2-  Acumulada
+
+```{r}
+pro.var.acum.R<-cumsum(eigen.val)/sum(eigen.val)
+pro.var.acum.R
+```
+
+Una vez observados los valores anteriores, podemos seleccionar los primeros 2 valores, ya que cumplen con el criterio del 80% 
+
+12-. Calcular la media de los valores propios
+```{r}
+mean(eigen.val.R)
+```
+
+##Obtencion de coeficientes 
+
+13-. Centrar los datos con respecto a la media 
+
+13.1 Construcción de la matriz centrada 
+
+```{r}
+ones<-matrix(rep(1,n),nrow=n, ncol=1)
+```
+
+13.2 Construcción de la matriz centrada
+
+```{r}
+X.cen<-as.matrix(x1-ones%*%mu)
+```
+
+14-.Construcción de la matriz diagonal de las covarianzas. 
+
+```{r}
+Dx<-diag(diag(s))
+Dx
+```
+
+15-. Construcción de la matriz centrada multiplicada por Dx^1/2
+
+```{r}
+Y<-X.cen%*%solve(Dx)^(1/2)
+```
+
+16-. Conatrucción de los coeficientes o scores eigen.vec.R
+
+```{r}
+scores<-Y%*%eigen.vec.R
+scores[1:10]
+```
+
+17-. Se nombran las columnas 
+
+```{r}
+colnames(scores)<-c("PC1","PC2","PC3","PC4")
+```
+
+18-. Visualización de los scores
+
+```{r}
+scores[1:10]
+```
+
+19-. Gráfico de los scores 
+
+```{r}
+pairs(scores, main = "Scores", col = "chartreuse", pch = 19 )
+```
+
+# VIa sintetizada 
+
+A continuación se presenta la via rápida para la visualización de los componentes principales y el screeplot.
+
+1-. Aplicar el cálculo de la varianza a las columnas  *1=filas, 2=columnas*
+
+```{r, warning=FALSE, message=FALSE}
+apply(x, 2, var)
+```
+
+2-. Centrado por la media y escalada porla desviacion standar (dividir entre sd).
+
+```{r}
+acp<-prcomp(x1, center=TRUE, scale=TRUE)
+acp
+```
+
+3- Generación del gráfico screeplot
+```{r}
+plot(acp, type="l")
+```
+
+En el grafico se muetra como solo toma un componente principal. 

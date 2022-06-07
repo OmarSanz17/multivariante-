@@ -1,0 +1,296 @@
+---
+title: "Analisis de componentes principales"
+author: "Omar Sanchez Hernandez"
+date: "17/4/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PCA
+
+## El análisis de componentes principales o (PCA)
+
+```{r Cargar los datos, echo=FALSE, warning=FALSE}
+###SELECCION DE LOS DATOS
+#install.packages("datos")
+library(datos)
+datos::flores
+View(flores)
+str(flores)
+# Instalar paquete para la manipulaci?n de dataframes
+#install.packages("dplyr") 
+library(dplyr)
+```
+
+## 1.- Se crea un nuevo data frame solo con las variables cuantitativas.
+
+```{r Armar el data frame, echo=FALSE, warning=FALSE}
+#Se crea un nuevo data frame solo con las variables cuantitativas
+#datos2 <- select(atmosfera, -anio, -mes) #### 1er manera para limpiar bases de datos
+datos2 <- select(flores, Largo.Sepalo, Ancho.Sepalo, Largo.Petalo, Ancho.Petalo) #2da manera para limpiar
+datos2
+View(datos2)
+x<-as.data.frame(datos2)
+x
+```
+
+## 2.- Selección de las variables cuantitativas, solo una especie.
+
+```{r Seleccionar la especie, echo=FALSE, warning=FALSE}
+##Selección de las variables cuantitativas, solo una especie 
+x1 <- x[51:100,1:4]
+```
+
+## 3.- Se definen **n** (numero de estados) y p (variables).
+
+```{r Dimensiones del data frame, echo=FALSE, warning=FALSE}
+# 3.- Se definen n (numero de estados) y p (variables)
+dim(x)
+n<-dim(x)[1]
+p<-dim(x)[2]
+```
+
+## 4.- Generación de un scatterplot de las variables originales.
+
+```{r Diagrama de dispersión, echo=FALSE, warning=FALSE}
+# 4.- Generacion de un scatterplot
+# de las variables originales
+pairs(x,col="chartreuse", pch=19, 
+      main="Variables originales")
+```
+
+Observando el gráfico es posible apreciar que algunas variables como "ancho de sépalo" esta ligeramente correlaciona con la variables "largo pétalo" de igual manera el ancho de pétalo tiene una correlación positiva en base a el largo del pétalo en general la mayoría de las variables presenta una correlación positiva.
+
+## 5.- Obtención de los componentes principales con base en la matriz de covarianza muestral.
+
+```{r Obtención de componentes, echo=FALSE, warning=FALSE}
+#5.- Obtención de los componentes principales
+# con base en la matriz de covarianza muestral
+mu<-colMeans(x)
+mu
+s<-cov(x)
+s
+```
+
+## 6.- Obtención de los componentes principales con base a la matriz de covarianza muestral.
+
+```{r Covarianza, echo=FALSE, warning=FALSE}
+#6.- Obtención de los componentes principales 
+# con base a la matriz de covarianza muestral
+es<-eigen(s)
+es
+```
+
+## 7.- Matriz de auto-valores.
+
+```{r Matriz de Eigen-valores, echo=FALSE}
+# 7.- Matriz de auto-valores
+eigen.val<-es$values
+```
+
+## 8.- Matriz de auto-vectores
+
+```{r Auto vectores, echo=FALSE, warning=FALSE}
+# 8.- Matriz de auto-vectores
+eigen.vec<-es$vectors
+```
+
+Criterio #2 de la selección de componentes principales. Proporción de variabilidad para cada vector. Se busca encontrar la varianza acumulada para la selección de componentes.
+
+```{r Varianza proporcion, echo=FALSE, warning=FALSE}
+#Criterio #2 de la selección de componentes principales.
+#Proporción de variabilidad para cada vector.
+#Se busca encontrar la varianza acumulada para la selección de componentes.
+pro.var<-eigen.val/sum(eigen.val)
+pro.var
+```
+
+## mus de variabilidad acumulada.
+
+```{r Var acumulada, echo=FALSE, warning=FALSE}
+# Proporción de variabilidad acumulada
+pro.var.acum<-cumsum(eigen.val)/sum(eigen.val)
+pro.var.acum
+```
+
+Los valores obtenidos fueron: 0.9246187,0.9776852,0.9947878,1.0000000 por lo que escogeremos 0.9246187 para reducir la dimensión, aun así, este valor representa muy buena varianza.
+
+## Obtención de los componentes principales con base en la matriz de correlaciones muestrales
+
+## Matriz de correlaciones
+
+```{r Matriz de cor, echo=FALSE, warning=FALSE}
+# Matriz de correlaciones
+R<-cor(x) 
+eR<-eigen(R) 
+eR
+```
+
+# Obtención de auto-valores
+
+```{r eigen valores, echo=FALSE, warning=FALSE}
+# Obtención de auto-valores
+eigen.val<-eR$values 
+eigen.val
+```
+
+# Obtención de auto-vectores
+
+```{r eigen vecs, echo=FALSE, warning=FALSE}
+# Obtención de auto-vectores
+eigen.vec<-eR$vectors 
+eigen.vec
+```
+
+# Proporción de variabilidad
+
+```{r prop var, echo=FALSE, warning=FALSE}
+# Proporción de variabilidad
+pro.var<-eigen.val/sum(eigen.val)
+pro.var
+```
+
+# Proporción de variabilidad acumulada
+
+```{r prop var acum, echo=FALSE, warning=FALSE}
+# Proporción de variabilidad
+pro.var.acum<-cumsum(eigen.val)/sum(eigen.val) 
+pro.var.acum
+```
+
+Los valores obtenidos fueron: 0.7296245,0.9581321,0.9948213,1.0000000. Lo que sugiere que solo se seleccione 0.7296245 con el fin de reducir la dimensión #2do criterio de selccion de componentes principales.
+
+# Media de los auto-valores
+
+```{r media eigen valores, echo=FALSE, warning=FALSE}
+# Proporción de variablidad
+mean(eigen.val)
+```
+
+#La media obtenida es 1 lo cual significa que se cumple el 3er criterio
+
+# Obtención de los coeficientes (nuevas variables)
+
+# 1.- Centrar los datos con respecto a la media
+
+```{r centrar los datos, echo=FALSE, warning=FALSE}
+# 1.- Centrar los datos con respecto a la media
+ones<-matrix(rep(1,n),nrow=n, ncol=1) 
+ones
+```
+
+```{r Matriz centrada, echo=FALSE, warning=FALSE}
+#2.- Construcción de la matriz centrada 
+X.cen<-as.matrix(x)-ones%*%mu 
+X.cen
+```
+
+# 3.- Construcción de la matriz diagonal de las varianzas
+
+```{r Var diag, echo=FALSE, warning=FALSE}
+# 3.- Construcción de la matriz diagonal de las varianzas
+Dx<-diag(diag(s)) 
+Dx
+```
+
+# 4.- Construcción de la matriz centrada multiplicada por $Dx^{\frac{1}{2}}$
+
+```{r Matrix producto, echo=FALSE, warning=FALSE}
+# 4.- Construccion de la matriz centrada multiplicada dx^(1/2)
+Y<-X.cen%*%solve(Dx)^(1/2)
+Y #datos normalizados
+```
+
+# 5.- Construcción de los coeficientes o scores.
+
+```{r Scores, echo=FALSE, warning=FALSE}
+# 5.- Construcción de los coeficientes o scores.
+scores<-Y%*%eigen.vec 
+scores
+# Nombramos las columnas PC1...PC8  
+colnames(scores)<-c("PC1","PC2","PC3","PC4")
+```
+
+## eigen.vec matriz de autovectores
+
+```{r Matrix de autovectores, echo=FALSE, warning=FALSE}
+# eigen.vec matriz de autovectores
+x
+```
+
+## visualizamos
+
+```{r Scores visul, echo=FALSE, warning=FALSE}
+## visualizamos
+scores
+```
+
+# Generación del gráfico de los scores
+
+```{r Gráfico de scores, echo=FALSE, warning=FALSE}
+## Gráfico de scores
+pairs(scores, main="scores", col="blue", pch=19)
+```
+
+# PCA sintetizado.
+
+```{r Sintetizado, echo=FALSE, warning=FALSE}
+## Sintetizado
+head(x)
+```
+
+# Aplicar el calculo de la varianza a las columnas.
+
+```{r Varianza por variable, echo=FALSE, warning=FALSE}
+## Varianza por variable.
+apply(x, 2, var)
+```
+
+# Centrado por la media y escalada por la desviación standar (dividir entre sd).
+
+```{r Compos, echo=FALSE, warning=FALSE}
+## Componentes
+acp<-prcomp(x, center=TRUE, scale=TRUE) 
+acp
+```
+
+# Generación del gráfico screeplot.
+
+```{r disp dispón, echo=FALSE, warning=FALSE}
+## Gráfico de dispersion
+plot(acp, type="l")
+```
+
+# Visualizar el resumen.
+
+```{r Resumen acp, echo=FALSE, warning=FALSE}
+## Resumen del acp
+summary(acp)
+```
+
+# Construcción del Biplot.
+
+```{r Biplot, echo=FALSE, warning=FALSE}
+## Gráfico Biplot
+biplot(acp, scale=0)
+```
+
+# Componente principal calculada.
+
+Suma del producto de la matriz acp de cada uno de los componentes por el dato de la matriz original por filas.
+
+```{r Componentes resultantes, echo=FALSE, warning=FALSE}
+## Componentes
+pc1<-apply(acp$rotation[,1]*x, 1, sum) 
+pc2<-apply(acp$rotation[,2]*x, 1, sum) 
+pc3<-apply(acp$rotation[,3]*x, 1, sum)
+x$pc1<-pc1 
+x$pc2<-pc2 
+x$pc3<-pc3
+pc1
+pc2
+pc3
+```

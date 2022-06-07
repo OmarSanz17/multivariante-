@@ -1,0 +1,192 @@
+---
+title: "Análisis Canónico de correspondencias"
+author: "Omar Sanchez Hernandez"
+date: "4/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+El análisis canónico es una herramienta multivariante la cual estudia la relación entre dos variables que están divididas en grupos.
+
+Este resulta como una generalización del modelo de regresión múltiple, cuyo objetivo es establecer la relación entre un conjunto de variables predictoras y un conjunto de variables respuesta.
+
+# Prepararción de la matriz de datos
+
+Para llevar a cabo el desarrollo de la tecnica se utilizara la matriz de datos de los palmer penguins que contiene informacion sobre las caracteristicas medidas a 3 especies de pingüinos. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Instalar paqueterias
+library(tidyverse)
+library(readxl)
+library(palmerpenguins)
+library(knitr )
+penguins=as.data.frame(read_excel("penguins.xlsx"))
+kable(head(penguins))
+
+```
+
+# Exploracion de la matriz
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dim(penguins)
+colnames(penguins)
+str(penguins)
+anyNA(penguins)
+```
+
+La matriz de datos contiene 344 observaciones con 9 variables en donde sus variables son numericas continuas, categoricas y de texto.
+La matriz de datos se encuentra limpia de valores faltantes.
+
+# Generacion de variables X
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+X <- penguins %>% 
+  select(grosor_pico_mm, largo_pico_mm) %>%
+  scale()
+head(X)
+```
+
+# Generacion de variables Y
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+Y <- penguins %>%
+  select(largo_aleta_mm,masa_corporal_g) %>%
+  scale()
+head(Y)
+```
+
+# Analisis canonico con un par de variables
+
+## Visualizacion de la matriz X
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Libreria
+library(CCA)
+# Analisis
+ac<-cancor(X,Y)
+
+# Visualizacion de la matriz X
+ac$xcoef
+```
+
+## Visualizacion de la matriz Y
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Visualizacion de la matriz Y
+ac$ycoef
+```
+
+## Visualizacion de la correlacion canonica
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac$cor
+```
+
+# Obtencion de la matriz de variables canonicas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Se obtiene multiplicando los coeficientes por
+# cada una de las variables (X1 y Y1)
+ac1_X <- as.matrix(X) %*% ac$xcoef[, 1]
+ac1_Y <- as.matrix(Y) %*% ac$ycoef[, 1]
+
+```
+
+#Visualizacion de los primeros 20 datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac1_X[1:20,]
+ac1_Y[1:20,]
+```
+
+# Correlacion canonica entre variable X1 y Y1
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+cor(ac1_X,ac1_Y)
+```
+
+# Verificacion de la correlacion canonica
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+assertthat::are_equal(ac$cor[1], 
+                      cor(ac1_X,ac1_Y)[1])
+```
+
+# Analisis canonico con dos pares de variables
+
+## Calculo de las variables X2 y Y2
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac2_X <- as.matrix(X) %*% ac$xcoef[, 2]
+ac2_Y <- as.matrix(Y) %*% ac$ycoef[, 2]
+
+```
+
+# Agregamos las variables generadas a la matriz original de penguins
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac_df <- penguins %>% 
+  mutate(ac1_X=ac1_X,
+         ac1_Y=ac1_Y,
+         ac2_X=ac2_X,
+         ac2_Y=ac2_Y)
+```
+
+# Visualizacion de los nombres de las variables
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+colnames(ac_df)
+```
+
+# Generacion del grafico scater plot para la visualizacion de X1 y Y1
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac_df %>% 
+  ggplot(aes(x=ac1_X,y=ac1_Y))+
+  geom_point(color="#551A8B")
+```
+
+# Generacion de un boxplot
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac_df %>% 
+  ggplot(aes(x=especie,y=ac1_X, color=especie))+
+  geom_boxplot(width=0.5)+
+  geom_jitter(width=0.15)+
+  ggtitle("Variable Canónica X1 contra Especie")
+```
+
+Interpretación: se observa una correlacion entre la variable canónica X1 y la variable latente Especie.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac_df %>% 
+  ggplot(aes(x=especie,y=ac1_Y, color=especie))+
+  geom_boxplot(width=0.5)+
+  geom_jitter(width=0.15)+
+  ggtitle("Variable Canónica Y1 contra Especie")
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac_df %>% 
+  ggplot(aes(x=ac1_X,y=ac1_Y, color=especie))+
+  geom_point()+
+  ggtitle("Variable Canónica X1 contra Y1")
+
+```
+
+# Scatterplot con las variables canonicas X2 y Y2 separadas por genero.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ac_df %>% 
+  ggplot(aes(x=ac2_X,y=ac2_Y, color=genero))+
+  geom_point()+
+  ggtitle("Variable Canónica X2 contra Y2")
+```
+
+Interpretacion: No de identifica correlacion entre el conjunto de variables X2 y Y2 separadas por genero.
+

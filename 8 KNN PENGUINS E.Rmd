@@ -1,0 +1,147 @@
+---
+title: "K-Vecinos más cercanos (KNN) de penguins"
+author: "Omar Sanchez Hernandez"
+date: "5/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+K-vecinos más cercanos es un método para clasificar casos basándose en sus similitudes a otros casos.
+
+# Librerias necesarias
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(MASS)
+library(readxl)
+```
+
+# Cargar los datos de los pengüins
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ruta = "penguins.xlsx"
+Z<-as.data.frame(read_excel(ruta))[,c(4,5,6,7,2)]
+Z$especie = as.factor(Z$especie)
+colnames(Z)
+```
+
+# Definir la matriz de datos y la variable respuesta con las clasificaciones
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+x<-Z[,1:4]
+y<-Z[,5]
+dim(Z)
+```
+La matriz de datos tiene 344 observaciones y 5 variables.
+
+\newpage
+
+# Se definen las variables y observaciones
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+n<-nrow(x)
+p<-ncol(x)
+dim(Z)
+```
+
+# Grafico scatter plot
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+col.iris<-c("blue","green","orange")[y]
+pairs(x, main="Data set Pingüinos, Adelie (azul),Gentoo (verde), Chinstrap (naranja)", 
+      pch=19,col=col.iris)
+```
+
+\newpage
+# Se fija una "semilla" para tener valores iguales
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+set.seed(64)
+library(class)
+```
+
+# Creacion de los ciclos para k=1 hasta k=20
+
+Se selecciona el valor de k que tenga el error mas bajo.
+
+# Inicialización de una lista vacia de tamaño 20
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+knn.class<-vector(mode="list",length=20)
+knn.tables<-vector(mode="list", length=20)
+```
+
+\newpage
+
+# Clasificaciones erroneas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+knn.mis<-matrix(NA, nrow=20, ncol=1)
+knn.mis
+# Se hace el ciclo
+for(k in 1:20){
+  knn.class[[k]]<-knn.cv(x,y,k=k)
+  knn.tables[[k]]<-table(y,knn.class[[k]])
+  # la suma de las clasificaciones menos las correctas
+  knn.mis[k]<- n-sum(y==knn.class[[k]])
+}
+knn.mis
+```
+
+# Numero optimo de k-vecinos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+which(knn.mis==min(knn.mis))
+knn.tables[[1]]
+```
+
+El numero optimo de k-vecinos es 1.
+
+\newpage
+
+# El mas eficiente es k=1 se señala el k mas eficiente
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+k.opt<-1
+knn.cv.opt<-knn.class[[k.opt]]
+knn.cv.opt
+```
+
+# Tabla de contingencia con las clasificaciones buenas y malas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+knn.tables[[k.opt]]
+```
+
+# Cantidad de observaciones mal clasificadas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+knn.mis[k.opt]
+```
+
+El modelo se equivoca clasificando a 44 sujetos.
+
+\newpage
+
+# Error de clasificacion (MR)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+(knn.mis[k.opt]/n)*100
+```
+
+El modelo presenta un error de mala clasificación del 12.79%
+
+# Grafico de clasificaciones correctas y erroneas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Grafico de clasificaciones correctas y erroneas
+col.knn.iris<-c("indianred1","black")[1*(y==knn.cv.opt)+1]
+pairs(x, main="Clasificación kNN de Iris",
+      pch=19, col=col.knn.iris)
+```
+
+Se puede observar que existen muchos valores mal clasificados que se traslapan con otros.

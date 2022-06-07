@@ -1,0 +1,122 @@
+---
+title: "K-Medias"
+author: "Omar Sanchez Hernandez"
+date: "4/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# INTRODUCCIÓN
+El metodo de agrupación K-medias pertenece al conjunto de metodos de aprendizaje **NO** supervisados el cual agrupa a los sujetos de la matriz de datos en  K grupos dependiendo en base a sus similitudes. 
+
+En el presente ejercicio se llevara a cabo el desarrollo de esta tecnica usando la matriz de datos **state.x77** que se encuentra en la libreria de ***datasets*** que contiene informacion sobre indicadores de 50 estados de Estados Unidos.
+
+# Matriz de datos.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Librerias
+library(cluster)
+library(knitr)
+X<-as.data.frame(state.x77)
+head(X)
+```
+
+# Sobre la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Librerias
+dim(X)
+str(X)
+```
+
+La matriz de datos contiene 50 casos, 8 variables y todas las variables son de tipo numericas.
+
+# Transformacion de datos
+
+Debido a las grandes diferencias entre las escalas de la matriz de datos es que se propone realizar una transformación logartimica sobre las variables 1,3 y 8.
+
+```{r}
+X[,1]<-log(X[,1])
+colnames(X)[1]<-"Log-Population"
+
+X[,3]<-log(X[,3])
+colnames(X)[3]<-"Log-Illiteracy"
+
+X[,8]<-log(X[,8])
+colnames(X)[8]<-"Log-Area"
+```
+
+# Metodo k-means
+```{r}
+dim(X)
+n<-dim(X)[1]
+p<-dim(X)[2]
+```
+
+# Estandarizacion univariante.
+Se aplica una estandarización a la matriz para homogeneizarla y que las variables con valores muy altos o valores muy bajos no tengan problemas por el tipo de escala.
+
+```{r}
+X.s<-scale(X)
+```
+
+# Aplicación del algoritmo k-medias 
+
+Se plantean 3 grupos (cantidad de subconjuntos **K**) aleatorios que se escogen para realizar los calculos de algoritmo y luego se muestran los centroides de cada grupo.
+
+```{r}
+Kmeans.3<-kmeans(X.s, 3, nstart=25)
+Kmeans.3$centers
+```
+
+# Cluster de pertenencia
+```{r}
+Kmeans.3$cluster
+```
+
+# SCDG
+```{r}
+SCDG<-sum(Kmeans.3$withinss)
+SCDG
+```
+
+# Clusters
+```{r}
+cl.kmeans<-Kmeans.3$cluster
+cl.kmeans
+```
+
+# Scatter plot por grupos (delimitados por el K-medias)
+
+```{r}
+col.cluster<-c("blue", "red", "green")[cl.kmeans]
+pairs(X.s, col=col.cluster, main="k-means", pch=19)
+```
+
+# Visualizacion con las dos componentes principales
+```{r}
+clusplot(X.s, cl.kmeans, 
+         main="Dos primeras componentes principales")
+text(princomp(X.s)$score[,1:2],
+     labels=rownames(X.s), pos=1, col="blue")
+```
+
+# Silhouette
+
+Representacion grafica de la eficacia de clasificacion de una observacion dentro de un grupo.
+
+## Generacion de los calculos
+```{r}
+dist.Euc<-dist(X.s, method = "euclidean")
+Sil.kmeans<-silhouette(cl.kmeans, dist.Euc)
+```
+
+## Generacion del grafico
+```{r}
+plot(Sil.kmeans, main="Silhouette for k-means", 
+col="blue")
+```

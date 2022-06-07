@@ -1,0 +1,251 @@
+---
+title: "Distancia de Mahalanobis"
+author: "Omar Sanchez Hernandez"
+date: "4/6/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# _____________ Ejercicio I _____________
+
+## Ejercicio de Clase
+
+## Para desarrollar esta primera parte primero vamos utilizar datos propuestos.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Cargar los datos
+ventas= c( 1054, 1057, 1058, 1060, 1061, 1060, 1061, 
+           1062, 1062, 1064, 1062, 1062, 1064, 1056, 
+           1066, 1070)
+clientes= c(63, 66, 68, 69, 68, 71, 70, 70, 71, 72, 72, 
+            73, 73, 75, 76, 78)
+# Utilizamos la función data.frame() para crear 
+# un juego de datos en R
+datos <- data.frame(ventas ,clientes)
+```
+
+## Exploración de los datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(knitr)
+dim(datos)
+str(datos)
+kable(summary(datos))
+```
+La matriz de datos contiene 16 observaciones, 2 variables y todas las variables son numericas.
+
+##    Calculo de la distancia de Mahalanobis
+
+El método de distancia Mahalanobis mejora el método clásico de distancia de Gauss eliminando el efecto que pueden producir la correlación entre las variables a analizar
+
+## Determinar el número de outlier que queremos encontrar.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+num.outliers <- 2
+```
+
+## Ordenar los datos de mayor a menor distancia, según la métrica de Mahalanobis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+mah.ordenacion <- order(mahalanobis(datos, colMeans(datos), cov(datos)), decreasing=TRUE)
+mah.ordenacion
+```
+
+## Generar un vector boleano los dos valores más alejados segun la distancia Mahalanobis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+outlier2 <- rep(FALSE , nrow(datos))
+outlier2[mah.ordenacion[1:num.outliers]] <- TRUE
+```
+
+## Resaltar con un punto relleno los 2 valores outliers.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+colorear.outlier <- outlier2 *16
+```
+
+## Visualizar el gráfico con los datos destacando sus outlier.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot(datos , pch=0)
+points(datos , pch=colorear.outlier)
+```
+
+# _____________ Ejercicio II _____________
+
+## Se generan datos, su matriz de varianzas y su distancia de mahalanbis
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+require(graphics)
+ma <- cbind(1:6, 1:3)
+(S <-  var(ma))
+mahalanobis(c(0, 0), 1:2, S)
+x <- matrix(rnorm(100*3), ncol = 3)
+stopifnot(mahalanobis(x, 0, 
+                      diag(ncol(x))) == rowSums(x*x))
+```
+
+## Aqui se usa $D^2$ como la distancia Euclidea comun
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+Sx <- cov(x)
+D2 <- mahalanobis(x, colMeans(x), Sx)
+```
+
+## Gráfico de la densidad de las distancias de Mahalanobis
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot(density(D2, bw = 0.5),
+     main="Squared Mahalanobis distances, 
+     n=100, p=3") ; rug(D2)
+```
+
+## Gráfico qqplot sobre los datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+qqplot(qchisq(ppoints(100), df = 3), D2,
+       main = expression("Q-Q plot of Mahalanobis" * ~D^2 *
+                           " vs. quantiles of" * ~ chi[3]^2))
+abline(0, 1, col = 'gray')
+```
+
+# _____________ Ejercicio III _____________
+
+# Planteamiento del problema.
+
+Se desea encontrar si existen valores atípicos en la matriz de datos de la base de los palmer penguins a nivel multivariado, es por ello que se recurrirá a la distancia de Mahalanobis para encontrar los posibles valores atípicos y presentarlos en un gráfico 2d
+
+# Simular los datos o utilizar una matriz precargada en R.
+
+Se carga la base de datos de los palmer penguins que esta incluida en el paquete ***"palmerpenguins"***
+
+Se hace un proceso de limpieza para quedarse con las observaciones de las especies **"Adelie"** y **"Chinstrap"**.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(palmerpenguins)
+datos = as.data.frame(penguins)
+#Quito valores faltantes
+datos = datos[is.na(datos$bill_length_mm)==F,]
+#Se extraen todos los pingüinos de la especie Gentoo debido a que los de la especie
+#Chinstrap y Adelie presentan cierta homogeneidad entre si, mientras que los de Gentoo se
+#Logran diferenciar muy bien de ellos.
+datos = datos[datos$species!="Gentoo" ,]
+#Se cambian los nombres de las filas despues de remover a los pinguinos de la especie Gentoo
+row.names(datos) = 1:nrow(datos)
+#Extraigo unicamente las variables numericas continuas
+datos = datos[,c(3,4,5,6)]
+#Cambio el nombre de las columnas
+names(datos) = c("L.Pico","P.Pico","Aleta","Masa")
+kable(head(datos))
+
+```
+
+# Descripcion de la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Reviso la dimension de la matriz procesada
+dim(datos) 
+names(datos)
+str(datos)
+```
+
+La matriz de datos esta compuesta por 219 observaciones y 4 variables numéricas de las cuales 2 son continuas y 2 son discretas.
+
+# Acercamiento Exploratorio en 3 dimensiones
+
+Se hace un gráfico de dispersión en 3d para observar el comportamiento de los sujetos:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(scatterplot3d)
+zz <- scatterplot3d(x = datos[,1], y = datos[,2], z = datos[,3], 
+                    xlab = "L.Pico", ylab = "P.Pico", zlab = "Aleta", 
+                    pch = 1, color = "blue", grid =TRUE,
+                    angle = 170)
+zz.coords <- zz$xyz.convert(datos[,1], datos[,2], datos[,3]) 
+text(zz.coords$x, 
+     zz.coords$y,             
+     labels = row.names(datos),               
+     cex = .8, 
+     pos = 2)  
+```
+
+Se alcanza a identificar en el gráfico de dispersion 3D que existen valores muy alejados del resto como el 14, el 28 y el 169
+
+# Obtención de las distancias de mahalanobis
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+datosmahal = mahalanobis(datos,center = colMeans(datos), cov = cov(datos))
+```
+
+# Observo la distribución de las distancias mediante un histograma
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+hist(datosmahal,col = "Pink",main = "Histograma de las distancias de Mahalanobis",
+     xlab = "Distancias de Mahalanobis") 
+```
+
+El histograma revela la presencia de valores muy alejado del resto.
+
+# Gráfico de cajas para detectar valores atipicos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+boxplot(datosmahal,col = "pink") 
+```
+
+Se encuentra que existen 4 observaciones que se alejan mucho de las demás.
+
+# Gráfico de las distancias de Mahalanobis 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot(datosmahal) 
+```
+
+Realizando un gráfico de dispersión de la variable se encuentra 1 dato muy alejado del resto y 3 mas que se alejan del resto.
+
+# Deteccion de los 4 valores mas alejados
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dmsa = order(datosmahal,decreasing = T)[1:4]
+dmsa
+```
+
+# Se extraen los valores 169,81,39 y 14
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+limpios = datosmahal[-dmsa]
+```
+
+Una vez quitadas las observaciones que aparecían como valores muy alejados, se procede a observar el comportamiento de los gráficos.
+
+# Histograma de la nueva base
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+hist(limpios,col = "Pink", main = "Histograma de los datos limpios",xlab =  "Distancias de Mahalanobis")
+```
+
+El histograma ya no presenta valores muy alejados.
+
+# Gráfico de cajas de la nueva base
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+boxplot(limpios, col = "pink")
+```
+
+El gráfico de cajas ya no reporta ningún valor fuera de sus limites.
+
+# Revisamos el gráfico de dispersion de las distancias de Mahalanobis
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot(limpios)
+```
+
+Se puede observar que los datos ya tienen un comportamiento mas homogéneo.
+
+# Conclusion
+
+Al gráfica los datos para poder observar su comportamiento nos topamos con la limitante de que por mucho podemos graficar 3 variables simultáneamente y suele suceder (como en este caso) que podemos llegar a tener 4 o mas variables que resultan de interés para nosotros y que no podemos alcanzar a representar al mismo tiempo por lo que la distancia de Mahalanobis resulta una opción viable para condensar esa información multivaridada en un solo valor que resulta mas manejable como se pudo observar en el transcurso del ejemplo con la base de pinguinos en donde se pudo pasar de tener 3 dimensiones en el espacio para representar su comportamiento a tener únicamente un solo valor que resumiera la información multivariante de los sujetos.

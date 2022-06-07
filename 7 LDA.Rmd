@@ -1,0 +1,106 @@
+---
+title: "Análisis discriminante lineal (LDA)"
+author: "Omar Sanchez Hernandez"
+date: "4/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+El análisis discriminante lineal es un tipo de analisis que construye una función a partir de datos numericos continuos para poder calcular la probabilidad de que un individuo pertenezca a un grupo (que vendria a ser la variable respuesta) para poder clasificarlo.
+
+Para desarrollar el siguiente ejemplo se hara uso de la base de datos de *iris*
+
+# Cargamos la matriz de datos de *iris*
+
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+library(knitr)
+Z<-as.data.frame(iris)
+kable(head(Z))
+```
+
+# Acerca de la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dim(Z)
+str(Z)
+```
+La matriz de datos contiene 150 observaciones y 5 variables de las cuales 4 son numericas continuas y una es categorica.
+
+# Se define la matriz de datos y la variable respuesta con las categorías.
+
+```{r}
+x<-Z[,1:4]
+y<-Z[,5]
+```
+
+# Definir como **n** como el numero de sujetos (flores) que participan y p como el numero de variables presentes. 
+
+```{r}
+n<-nrow(x)
+p<-ncol(x)
+```
+
+# Se aplica el Análisis discriminante lineal **(LDA)** con Validación cruzada **(cv)**: clasificación optima.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+lda.iris<-lda(Z$Species~.,data=Z,CV=TRUE)
+```
+
+# El objeto **lda.iris** contiene las clasificaciones hechas por ***Validación Cruzada*** usando el discriminante lineal.
+
+```{r}
+lda.iris$class
+```
+
+# Se crea la matriz de confusion para evaluar que tan bien logra clasificar a los sujetos.
+
+```{r}
+table.lda<-table(y,lda.iris$class)
+table.lda
+```
+Se observa en la matriz de confusión que el modelo se equivoca clasificando a 3 sujetos.
+
+# Proporción de errores
+
+```{r}
+mis.lda<- n-sum(y==lda.iris$class)
+(mis.lda/n)*100
+```
+
+Tras calcular la proporción de errores se encuentra que el modelo se equivoca discriminando un 2% de los casos totales.
+
+# Scatterplot para localizar a los sujetos mal clasificados
+
+```{r}
+col.lda.iris<-c("indianred1","black")[1*(y==lda.iris$class)+1]
+pairs(x,main="Buena clasificación (negro), mala clasificación (rojo)",
+      pch=19,col=col.lda.iris)
+```
+En el gráfico se puede observar como hay pocos valores de color rojo que son los que se clasifican mal, sin embargo hay relaciones entre variables que se pueden observar muy bajas e incluso nulas como lo es en el caso de el largo del sepalo con el ancho del mismo, o el acho del sepalo con el largo del pétalo. 
+
+9.- Probabilidad de pertenencia a uno de los tres grupos
+
+```{r}
+round(lda.iris$posterior,3)
+```
+
+10.- Gráfico de probabilidades
+
+```{r}
+plot(1:n, lda.iris$posterior[,1],
+     main="Probabilidades a posteriori",
+     pch=20, col="#27408B",
+     xlab="Número de observaciones", ylab="Probabilidades")
+points(1:n,lda.iris$posterior[,2],
+       pch=20, col="#8B4C39")
+points(1:n,lda.iris$posterior[,3],
+       pch=20, col="#2E8B57")
+
+```
+En el gráfico de dispersion de las probabilidades a priori y posteriori se puede observar como existen comportamientos de traslape entre las observaciones de las especies de **Virginica** y **Versicolor**.

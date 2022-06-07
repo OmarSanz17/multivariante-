@@ -1,0 +1,191 @@
+---
+title: "Análisis Factorial con la libreria pshych"
+author: "Omar Sanchez Hernandez"
+date: '4/6/2022'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduccion
+
+Para la realización del siguiente ejercicio practico se hará uso de la librería ***psych*** que contiene diferentes matrices de datos y herramientas útiles para facilitar la aplicación de estadísticas al área de las ciencias sociales.
+
+
+# Librerías  a utilizar
+
+```{r message=FALSE, warning=FALSE}
+library(psych)
+library(polycor)
+library(ggcorrplot)
+library(knitr)
+```
+
+# Obtención de la matriz de datos
+
+Se carga la matriz de datos **bfi** que se encuentra dentro de la libreria **psych**.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+x <- bfi
+```
+
+# Exploracion de la matriz 
+```{r message=FALSE, warning=FALSE}
+dim(x)
+```
+En un principio la matriz de datos contiene 2800 observaciones y 28 variables.
+
+##  Tipo de las variables contenidas
+```{r}
+kable(str(x))
+```
+
+Se puede observar que todas las variables presentes son de tipo entero y que ademas existe la presencia de valores ausentes (**NA**).
+
+## Nombre de las variables 
+
+```{r}
+colnames(x)
+```
+
+## Sub matriz de datos
+```{r}
+x1<-bfi[1:200,1:25]
+```
+
+Se procedió a obtener un subconjunto del total de datos para trabajar.
+ 
+# Matriz de correlaciones 
+
+```{r}
+R<- hetcor(x1)$correlations
+ggcorrplot(R,hc.order= TRUE)
+```
+
+Haciendo uso del gráfico que representa la matriz de correlaciones es que podemos darnos una idea respecto a si es viable aplicar el análisis factorial debido a que las variables entre si presentan correlaciones.
+
+# Pruebas sobre la matriz de correlaciones
+
+Se utiliza la prueba de esfericidad  de Bartlett para probar que estadisticamente la matriz de correlaciones es distinta a la matriz identidad de tamaño **n**,
+
+```{r,warning=FALSE,message=FALSE}
+prueba_Bartlett<- cortest.bartlett(R)
+prueba_Bartlett
+```
+
+Se encontro un p-valor menor a 0.001 por lo que se rechaza la hipotesis nula y se concluye que la matriz de correlaciones es distinta a la matriz de identidad.
+
+## Criterio Kaiser-Meyer-Olkin
+Permite identificar si los datos que se van a analizar son adecuados para un análisis factorial.
+
+0.00 a 0.49 No adecuados 
+0.50 a 0.59 Poco adecuados 
+0.60 a 0.69 Aceptables 
+0.70 a 0.89 Buenos 
+0.90 a 1.00 Excelente 
+
+```{r}
+KMO(R)
+```
+
+El indice KMO resulta de 0.76 por lo que es un buen indicador sobre los datos para continuar con el analisis factorial.
+
+
+# Extracción de factores 
+
+Para la extraccion de factores se pueden usar varios metodos que los calculan de diferentes maneras pero para el caso de este desarrollo de opta por el metodo de maxima verosimilitud (**mle**) y por el metodo del minimo residuo (**minres**).
+
+## Metodo de Maxima Verosimilitud
+
+```{r}
+modelo1<- fa(R,nfactor=3,rotate = "none",fm = "mle")
+```
+
+## Metodo del minimo residuo
+
+```{r}
+modelo2<- fa(R,nfactor=3,rotate = "none",fm = "minres")
+```
+
+Extraer el resultado de las Comunalidades, allí se encuentra la proporción de varianza explicada. Se interpreta de tal forma que números cercanos a 1 están bastante bien explicadas por los factores comunes, entre más comunalidades altas aya en el factor este explica mejor la variable y el análisis en consecuencia será mejor.
+
+```{r}
+C1<-sort(modelo1$communality,decreasing = TRUE)
+C2<-sort(modelo2$communality,decreasing = TRUE)
+```
+ 
+combinar los resultados para comparar 
+
+```{r}
+head(cbind(C1,C2))
+```
+
+Extracción de unidades: 
+La unicidad es el cuadrado del coeficiente del factor único, y se expresa como la proporción de la varianza explicada por el factor único. es decir, no  puede ser explicada por otros factores.
+
+# Probar la unicidad del primer modelo
+
+```{r}
+u1<- sort(modelo1$uniquenesses,decreasing = TRUE)
+```
+
+# Probar la unicidad del segundo modelo
+
+```{r}
+u2<- sort(modelo2$uniquenesses,decreasing = TRUE)
+```
+
+# Comparacion de ambas unicidades 
+
+```{r}
+head(cbind(u1,u2))
+```
+
+Al observar la unicidad de los dos métodos de rotación resulta que la variación entre ellas es muy pequeña y no cambia mucho una de la otra. 
+La unicidad es el cuadrado del coeficiente del factor único, que expresa la  proporción de la varianza que queda explicada por el factor único, es decir, la varianza que no puede explicarse por los factores comunes.
+
+Se considera rotar por Máxima Verosimilitud o Mínimo residuo la varianza que no se puede explicar. Los coeficientes resultan ser muy parecidos y queda en decisión del investigador cual es el método que más conveniente para llegar a una conclusión.   
+
+# Seleccionar el numero de factores 
+
+```{r}
+scree(R)
+```
+
+En el Scree plot podemos escoger la cantidad de factores a utilizar, ademas de que en este gráfico tenemos dos opciones por las cuales podemos inclinarnos: el método de  **Componentes Principales**(PC) y  **Análisis Factorial** (FA).
+En los componentes principales la cantidad de factores que seleccionamos es hasta donde se forme un codo.
+
+Observamos que los dos métodos nos limitan a usar las misma cantidad de factores pues la gráfica de cada uno no discrepa tanto uno del otro.
+
+# Rotación de la matriz 
+```{r,warning=FALSE,message=FALSE}
+library(GPArotation)
+rot<-c("None", "Varimax", "Quartimax", "Promax")
+bi_mod<-function(tipo){
+  biplot.psych(fa(x1, nfactors = 2,  
+  fm= "minres", rotate=tipo),
+  main = paste("Biplot con rotación", tipo),
+  col=c("#FFB6C1","#87CEFA","#87CEFA"), pch=c(21,18), group=bfi[,"gender"])
+}
+sapply(rot,bi_mod)
+```
+
+# Gráfico de arbol
+
+Para observar cuales variables se asocian a cual factor es que se hace uso del siguiente gráfico:
+
+```{r}
+modelo_varimax<-fa(R,nfactor = 5,
+                   rotate = "varimax",
+                   fm="minres")
+fa.diagram(modelo_varimax)
+```
+Lineas rojas son cargas positivas y lineas negras cargas negativas 
+
+Visualización de la matriz de carga rotada. 
+```{r}
+print(modelo_varimax$loadings,cut=0)
+```
+

@@ -1,0 +1,458 @@
+---
+title: "Análisis discriminante Lineal (LDA)"
+author: "Omar Sanchez Hernandez"
+date: "5/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Introducción**
+
+La técnica de análisis discriminante lineal (LDA) tiene la finalidad de proporcionar reglas de clasificación optimas de nuevas observaciones de las cuales se desconoce su grupo de procedencia basándonos en la información proporcionada por los valores que en ella toman las variables independientes. La técnica usa datos numéricos como regresores para explicar un dato cualitativo, en este caso, la categoría a la que pertenece un sujeto. Esta técnica tiene 2 finalidades:
+
+-   **Discriminar a los elementos basados en la información proporcionada.**
+-   **Clasificar a las nuevas observaciones mediante un modelo.**
+
+Al tratarse de un modelo para inferencia estadística debe cumplir con los supuestos de normalidad multivariada y homocedasticidad multivariada.
+
+# **Descripción de la matriz de datos**
+
+Se tiene un conjunto de datos sobre cráneos recogidos en dos zonas del Tíbet. Los datos que tienen asociado el valor 1 corresponden a tumbas de Sikkim y alrededores.
+
+Los cráneos que tienen asociado el numero 2 corresponden a cráneos encontrados en el campo de batalla de ***Lhasa.*** En total se tienen 32 cráneos de los cuales 17 pertenecen al grupo 1 de ***Sikkim*** y alrededores mientras que los 15 restantes pertenecen al grupo 2 encontrados en el campo de batalla. Las características que se midieron a los cráneos son las siguientes: mayor longitud horizontal del cráneo (x1), mayor anchura horizontal del cráneo (x2), altura del cráneo (x3), altura de la parte superior de la cara (x4) anchura de la cara entre los huesos de las mejillas (x5).
+
+\newpage
+
+## Se cargan las librerías necesarias
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Librerías a utilizar 
+library(ggplot2)
+library(MVN)
+library(readxl)
+library(MASS)
+library(Hotelling)
+library(scatterplot3d)
+library(klaR)
+library(biotools)
+library(scatterplot3d)
+library(knitr)
+library(tidyverse)
+```
+
+## Se carga la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#CARGO LOS DATOS DE LOS CRANEOS
+rut = "BASE DE CRANEOS DISCRIMINANTE LINEAL.xlsx"
+datos <- as.data.frame(read_excel(rut))
+attach(datos)
+kable(head(datos),caption = "Base de los craneos")
+#CONVIERTO TIPO EN VARIABLE DE TIPO FACTOR
+datos$TIPO = as.factor(datos$TIPO)
+```
+
+## Dimensión de la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#DIMENSION DE LA MATRIZ DE DATOS
+dim(datos)
+```
+
+La matriz de datos cuenta con 32 observaciones y 6 variables.
+
+\newpage
+
+## Nombre de las variables
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NOMBRE DE LAS VARIABLES
+names(datos)
+```
+
+### Lista de variables
+
+-   **LONG:** mayor longitud horizontal del cráneo.
+-   **ANCH**: mayor anchura horizontal del cráneo.
+-   **ALT**: altura del cráneo.
+-   **ALT.C**: altura de la parte superior de la cara.
+-   **ANCH.C**: anchura de la cara entre los huesos de las mejillas.
+-   **TIPO**: Lugar donde fue encontrado el cráneo (Sikkim y Lhasa)
+
+## Tipo de variables
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#TIPO DE VARIABLES
+str(datos)
+```
+
+La matriz de datos esta conformada por 6 variables de las cuales 5 son numéricas y una es de tipo categórica (factor).
+
+## Detección de valores faltantes (**NA's**)
+
+```{r}
+#DETECCION DE VALORES FALTANTES NA'S
+anyNA(datos)
+```
+
+No se detectaron valores faltantes dentro de la matriz de datos.
+
+\newpage
+
+## Estadísticas descriptivas
+
+### Media por variable y grupo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Estadísticas descriptivas
+## Medias y varianzas
+#Media
+m1 = tapply(datos$LONG , datos$TIPO , mean)
+m2 = tapply(datos$ANCH , datos$TIPO , mean) 
+m3 = tapply(datos$ALT , datos$TIPO , mean) 
+m4 = tapply(datos$ALT.C , datos$TIPO , mean) 
+m5 = tapply(datos$ANCH.C , datos$TIPO , mean) 
+medias1 = cbind.data.frame(m1,m2,m3,m4,m5)
+names(medias1) = c("Longitud","Ancho","Altura","Altura de cara","Ancho de Cara")
+Grupo = c("Sikkim","Lhasa")
+medias1 = cbind.data.frame(medias1,Grupo)
+kable(medias1,caption ="Medias de las variables por grupo")
+```
+
+Se observa que las medias de las variables resultan muy similares en las variables de **Ancho** y **Altura** mientras que en las variables de **Longitud**, **Altura de cara** y **Ancho de cara** presentan diferencias notables.
+
+\newpage
+
+### Desviación estándar por variable y grupo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Desviación estándar
+sd1 = tapply(datos$LONG , datos$TIPO , sd)
+sd2 = tapply(datos$ANCH , datos$TIPO , sd) 
+sd3 = tapply(datos$ALT , datos$TIPO , sd) 
+sd4 = tapply(datos$ALT.C , datos$TIPO , sd) 
+sd5 = tapply(datos$ANCH.C , datos$TIPO , sd) 
+sds1 = cbind.data.frame(sd1,sd2,sd3,sd4,sd5)
+names(sds1) = c("Longitud","Ancho","Altura","Altura de cara","Ancho de Cara")
+Grupo = c("Sikkim","Lhasa")
+sds1 = cbind.data.frame(sds1,Grupo)
+kable(sds1,caption = "Desviacion estandar de las variables por grupo")
+```
+
+En la tabla de desviaciones estándar podemos observar como ocurre lo mismo que con la tabla de medias. Las variables longitud, ancho de cara y ancho son muy distintas entre sí, lo que nos indicaría que un grupo tiene mayor dispersión comparado con el otro.
+
+\newpage
+
+# **Tratamiento de la matriz de datos**
+
+La matriz tal cual esta se encuentra depurada y lista para que se pueda aplicar el correspondiente tipo de análisis debido a que se encuentra organizada y libre de valores faltantes (**NA's**).
+
+## Sujetos por grupo
+
+```{r message=FALSE, warning=FALSE}
+sujes = as.data.frame(table(datos$TIPO))
+names(sujes) = c("Grupo","Frecuencia")
+sujes[,1] = c("Sikkim","Lhasa")
+kable(sujes,caption = "Sujetos por grupo")
+```
+
+En la matriz de datos se encuentran presentes 17 observaciones de cráneos encontrados en **Sikkim** y 15 encontrados en **Lhasa**.
+
+## Obtención de la muestra de entrenamiento al **80%**
+
+Para entrenar al modelo discriminante es necesario separar la matriz de datos en 2 subconjuntos, en el subconjunto de entrenamiento que contiene el **80%** de los sujetos y el restante **20%** se va para probar que tan bueno es el modelo generado.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Se crea la muestra de entrenamiento del 80%
+set.seed(2510)
+dentre = sample_frac(datos,.8)
+kable(dentre,caption = "Muestra de entrenamiento")
+```
+
+## Obtención de la muestra de prueba
+
+```{r}
+#El resto de los datos forman la base de prueba
+dpru = setdiff(datos,dentre)
+dpru1 = data.frame(dpru[,1:5],clase=as.vector(dpru[,6]))
+kable(dpru1,caption = "Muestra de prueba")
+```
+
+\newpage
+
+# **Metodología de análisis**
+
+Se utilizara el análisis discriminante lineal (**LDA**) debido a que se busca encontrar un modelo para hacer inferencia que logre clasificar bien a los sujetos participantes de la matriz de datos, para ello es necesario que los datos cumplan con los siguientes requisitos:
+
+-   Las variables independientes deben ser numéricas continuas.
+-   La variable dependiente debe ser categórica (en este se tienen 2 categorías).
+-   Las variables independientes deben cumplir la normalidad multivariada.
+-   Las variables independientes deben cumplir con la homogeneidad de varianzas multivariada.
+
+## Para la normalidad multivariada se recurre a la prueba de **Royston**
+
+Para probar la normalidad multivariada se usa la prueba de **Royston** que obtiene las distancias de Mahalanobis y las compara frente a una versión mas robusta de la estandarización **Z**.
+
+La prueba de **Royston** contrasta el siguiente juego de hipótesis:
+
+$H_0$*: Los datos cumplen la normalidad multivariante.*
+
+***VS***
+
+$H_\alpha$*: Los datos no cumplen la normalidad multivariante.*
+
+## Para probar la homogeneidad de varianzas multivariada se recurre a la prueba de M-Box.
+
+La prueba **M-Box** contrasta el siguiente juego de hipótesis:
+
+$H_0$*: La matriz de covarianzas de un grupo es igual a la del otro grupo.*
+
+***VS***
+
+$H_\alpha$*: La matriz de covarianzas de un grupo es distinta a la del otro grupo.*
+
+## Evaluación del modelo
+
+Posterior a la validación de los supuestos que fundamentan el uso del análisis, se procedería a obtener el modelo de discriminante lineal, a evaluar con los mismos datos que lo generaron que tan bien los discrimina y finalmente se procedería a hacer lo mismo pero con los datos del conjunto de prueba para evaluar el desempeño de clasificación del modelo cuando se encuentra con datos que no conoce.
+
+\newpage
+
+# **Resultados**
+
+## Resultados descriptivos
+
+### Gráficos de dispersión bivariados por grupo.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Hago el gráfico de dispersión en pares de variables
+pairs(x = datos[,1:5],
+      col = c("red","blue")[datos$TIPO],pch = 19)
+
+```
+
+Se observa que los sujetos presentan un grado considerable de traslape por variable.
+
+\newpage
+
+### Gráficos de dispersión **3D**
+
+Se propone la realización de un gráfico de dispersión en **3D** con las variables **Longitud**, **Ancho** y **Alto** para observar de mejor manera el comportamiento de los datos.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Scatter plot en 3 dimensiones
+scatterplot3d(x = datos$LONG, y = datos$ANCH, z = datos$ALT,
+          xlab = "Longitud", ylab =  "Ancho", zlab= "Alto",
+            color = datos$TIPO,angle = 430 )
+```
+
+Se observa que si hay una tendencia de los valores a irse hacia los extremos pero en el centro se encuentran varios traslapados entre si.
+
+\newpage
+
+### Gráficos de dispersión **3D** con otras variables
+
+Se propone la realización otro gráfico de dispersión en **3D** con las variables **Longitud**, **Altura de la cara** y **Ancho de la cara** para observar de mejor manera el comportamiento de los datos.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Scatter plot con otras variables en 3 dimensiones
+scatterplot3d(x = datos$LONG, y = datos$ALT.C, z = datos$ANCH.C,
+              xlab = "Longitud", ylab =  "Altura del cara", zlab= "Ancho del cara",
+              color = datos$TIPO,angle = 2200 )
+```
+
+Se observa que nuevamente existe como una tendencia de los grupos hacia irse a los extremos pero en el centro hay varios sujetos que resultan similares en características de los 2 grupos.
+
+\newpage
+
+## Resultados inferenciales
+
+### Gráfico qqplot para las distancias de Mahalanobis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#prueba de Royston para normalidad multivariada
+pruebaroyston = mvn(data = datos[,-6],mvnTest ="royston",
+                    multivariatePlot = "qq")
+```
+
+En el gráfico se puede observar como todas la mayoría de las observaciones se ajustan al comportamiento de la recta por lo que podría estar dando un indicio sobre el cumplimiento de la normalidad multivariante.
+
+\newpage
+
+### Normalidad univariada
+
+A continuación se prueba el cumplimiento de la normalidad para cada variable.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+kable(pruebaroyston$univariateNormality, caption = "Normalidad univariada")
+```
+
+Se observa que todas las variables cumplen la normalidad univariada a excepción de la variable **ANCH.C**.
+
+### Normalidad multivariada
+
+A continuación se prueba la normalidad multivariada con la prueba de **Royston**
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+kable(pruebaroyston$multivariateNormality,caption = "Normalidad multivariada" )
+```
+
+Se obtiene un p valor de 0.4233818 por lo que **NO** se rechaza la hipótesis nula y se concluye que se cumple el supuesto de normalidad multivariada para la matriz de datos.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Prueba de homocedasticidad MULTIVARIADA
+z1 = boxM(data = datos[,1:5],grouping = datos[,6])
+zm1 = cbind.data.frame(z1$statistic,z1$parameter,z1$p.value)
+names(zm1) = c("Estadistico","G.l.","P-valor")
+kable(zm1, caption = "Prueba M-Box")
+```
+
+La prueba **M-Box** reporta un valor p = 0.2437 por lo que **NO** se rechaza la hipótesis nula y se concluye que se cumple el supuesto de homocedasticidad multivariante.
+
+\newpage
+
+### Resultados del modelo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ir_o = dentre[order(dentre$TIPO),]
+#Armo el modelo
+ir2.lda = lda(TIPO~.,datos)
+ir2.lda
+
+```
+
+### Se obtiene la matriz de confusión de los datos que generaron al modelo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Para discriminar de las observaciones internas
+#Armo la matriz de confusión
+predicciones <- predict(object = ir2.lda, newdata = dentre[,-6])
+mz1 = table(dentre$TIPO,predicciones$class,dnn=c("Clase real","Clase predicha"))
+mz1
+```
+
+Se observa que el modelo se equivoca discriminando a 5 sujetos.
+
+### Se calcula el error de mala discriminación
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#El modelo tiene un error al discriminar del: 
+errorclas <- round(mean(dentre$TIPO!= predicciones$class)*100,4)
+paste0("Error de discriminacion = ",errorclas,"%")
+```
+
+El modelo presenta un error alto de discriminación puesto que esperaríamos que clasifique con un 10% o menor.
+
+### Probabilidades a priori y a posteriori de pertenecer a uno u otro grupo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Armo la matriz de datos
+probs = predict(ir2.lda,ir_o,type ="prob")
+probs=data.frame(probs)
+Posición= 1:nrow(probs)
+probs=data.frame(cbind(probs,Posición))
+kable(probs)
+```
+
+\newpage
+
+### Gráfico de las probabilidades de discriminación del modelo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+attach(probs)
+ggplot(probs, aes(Posición,LD1)) +
+  geom_point(aes(color = class),size=2) +
+  geom_line(aes(y=0), size=1) +
+  geom_text(label=rownames(probs))
+```
+
+En el gráfico se puede observar como se hace la separación de los valores en donde los que se encuentran por encima de la linea marcada pertenecen a una clase y los que están por debajo pertenecen a otra pero como tenemos valores mal discriminados entonces se puede observar que hay valores de una clase en la sección que le pertenece a la otra y viceversa.
+
+\newpage
+
+### Se obtiene la matriz de confusión de los datos de prueba
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Clasificando con la prueba
+#Armo la matriz de confusión
+predicciones1 <- predict(object = ir2.lda, newdata = dpru1[,-6])
+zmk1 = table(dpru1$clase,predicciones1$class,dnn = c("Clase real","Clase predicha"))
+zmk1
+```
+
+El modelo únicamente se equivoca clasificando a 1 sujeto.
+
+### Se calcula el error de mala clasificación
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Se observa que hay 7 sujetos mal clasificados
+error1_entre = round(mean(dpru1$clase != predicciones1$class)*100,4)
+paste0("error de clasificación = ",error1_entre, "%")
+```
+
+El error de clasificación resulta de 16.66% lo cual resulta un valor alto puesto que nosotros esperaríamos que el modelo se equivoque un 10% o menos.
+
+### Probabilidades a priori y a posteriori de pertenecer a uno u otro grupo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Armo el gráfico
+probs = predict(ir2.lda,dpru1 ,type ="prob")
+probs=data.frame(probs)
+Posición= 1:nrow(probs)
+probs=data.frame(cbind(probs,Posición))
+kable(probs)
+```
+
+\newpage
+
+### Gráfico de las probabilidades de discriminación del modelo
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+attach(probs)
+ggplot(probs, aes(Posición,LD1)) +
+  geom_point(aes(color = class),size=2) +
+  geom_line(aes(y=0), size=1) +
+  geom_text(label=rownames(probs))
+```
+
+En el gráfico se puede observar como un valor que pertenece a la clase 1 se encuentra en la sección de la clase 2 debido a que el modelo determina por apenas muy poco que debe pertenecer a la clase 2 aunque originalmente sea de la clase 1. \newpage
+
+# **Conclusiones**
+
+Tras observar los gráficos exploratorios se concluye que el problema quizás no sea un buen candidato para ser separado de manera lineal puesto que existe mucho traslape entre los sujetos de cada grupo.
+
+El modelo de discriminante lineal al que se llega resulta bueno pero no ideal puesto que su error de discriminación es del **19.2308%** y su error de discriminación es del **16.66%** lo cual no resulta tan beneficioso de cara a buscar un modelo que clasifique con mayor precisión.
+
+Finalmente, se concluye haciendo mención de que los datos no son buenos candidatos para ser separados linealmente por el grado de traslape y similitud que tienen los de un grupo con otro pero posiblemente se puedan llegar a mejores resultados si se aplica un modelo discriminante cuadrático (**QDA**) o incluso con la aplicación de las maquinas de soporte vectorial.
+
+\newpage
+
+# **Referencias**
+
+-   Al, I., & Discriminante, A. (n.d.). Tema 1: Análisis Discriminante Lineal. Uc3m.Es. Retrieved June 5, 2022, from <http://halweb.uc3m.es/esp/Personal/personas/jmmarin/esp/DM/tema1dm.pdf>
+
+## **Lista de paquetes utilizados**
+
+-   ***ggplot2***
+
+-   ***MVN***
+
+-   ***readxl***
+
+-   ***MASS***
+
+-   ***Hotelling***
+
+-   ***scatterplot3d***
+
+-   ***klaR***
+
+-   ***biotools***
+
+-   ***scatterplot3d***
+
+-   ***knitr***
+
+-   ***tidyverse***

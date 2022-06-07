@@ -1,0 +1,109 @@
+---
+title: "Algoritmo PAM"
+author: "Omar Sanchez Hernandez"
+date: "4/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+El algoritmo ***PAM*** es una mejora del algoritmo K-Means para resolver el problema de la interferencia de ruido. El enfoque adoptado por este problema es la mejora lograda al igualar el peso de cada dato para lograr asi un mejor agrupamiento de los datos.
+
+En el presente ejercicio se llevara a cabo el desarrollo de esta tecnica usando la matriz de datos state.x77 que se encuentra en la libreria de datasets que contiene informacion sobre indicadores de 50 estados de Estados Unidos.
+
+# Cargar la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(knitr)
+library(cluster)
+X<-as.data.frame(state.x77)
+kable(X)
+```
+
+# Sobre la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dim(X)
+str(X)
+```
+
+La matriz de datos esta compuiesta por 50 observaciones y 8 variables numericas.
+
+# Transformacion de las variables x1,x3 y x8 con la funcion de logaritmo
+
+Se aplica el logaritmo a esas variables con la finalidad de reducir los valores de la escala y que esto no resulte tan influyente al momento de aplicar el metodo PAM.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+X[,1]<-log(X[,1])
+colnames(X)[1]<-"Log-Population"
+
+X[,3]<-log(X[,3])
+colnames(X)[3]<-"Log-Illiteracy"
+
+X[,8]<-log(X[,8])
+colnames(X)[8]<-"Log-Area"
+```
+
+
+# ***Metodo PAM***
+
+# Estandarizacion univariante.
+
+Se realiza una estandarización sobre los datos con la finalidad de homogeneizar la escala de los datos sin perder la información de los sujetos.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+n<-dim(X)[1]
+p<-dim(X)[2]
+X.s<-scale(X)
+```
+
+# Aplicacion del algoritmo y sus clusters
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+pam.3<-pam(X.s,3)
+cl.pam<-pam.3$clustering
+cl.pam
+```
+
+Se obtienen las etiquetas que el algoritmo le asigna a cada sujeto.
+
+# Scatter plot de la matriz con los grupos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+col.cluster<-c("blue","red","green")[cl.pam]
+pairs(X.s, col=col.cluster, main="PAM", pch=19)
+```
+En el scatter plot se puede observar el comportamiento de los sujetos de manera bivariada pero estando identificados por la etiqueta que les asigno el algoritmo ***PAM***.
+De manera bivariada se observan traslapes entre los sujetos de cada grupo.
+
+#  Visualizacion con Componentes Principales
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+clusplot(X.s,cl.pam)
+text(princomp(X.s)$scores[,1:2],
+     labels=rownames(X.s),pos=1, col="blue")
+```
+
+El agrupamiento que se consigue es ligeramente distinto al del algoritmo K-medias pero aun asi sigue logrando separar de una manera considerablemente bien a los sujetos.
+
+#   Silhouette
+
+Representacion grafica de la eficacia de clasificacion de una observación dentro de un grupo.
+
+# Generacion de los calculos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dist.Euc<-dist(X.s, method = "euclidean")
+Sil.pam<-silhouette(cl.pam, dist.Euc)
+```
+
+# Generacion del gráfico
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot(Sil.pam, main="Silhouette for PAM", 
+     col="blue")
+```

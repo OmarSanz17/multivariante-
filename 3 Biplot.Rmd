@@ -1,0 +1,260 @@
+---
+title: "Biplot"
+author: "Omar Sanchez Hernandez"
+date: "4/6/2022"
+output: pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# -_______________ BIPLOT _____________-
+
+Para la realización del ejercicio se hara uso de las siguientes librerías: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Instalacion de paquetes
+#install.packages("MultBiplotR")
+library(MultBiplotR)
+library(readxl)
+library(knitr)
+
+```
+
+# Reconocimiento de la matriz de datos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ruta = "Vinos.xlsx"
+BD<-as.data.frame(read_excel(ruta))[,-1]
+```
+
+
+# Exploracion de matriz
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+dim(BD)
+str(BD)
+colnames(BD)
+BD$denomina = as.factor(BD$denomina)
+BD$grupo = as.factor(BD$grupo)
+```
+
+#  Graficos de exploracion
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+BX1<-BoxPlotPanel(BD[,4:9], nrows=2, groups=BD$denomina)
+BX1
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+BX2<-BoxPlotPanel(BD[,4:9], nrows=2, groups=BD$grupo)
+BX2
+```
+
+#  Filtrado de variables
+
+# 1.- Seleccion de variables numericas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+X<-BD[,4:21]
+```
+
+# 2.- Generacion Plot
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+PL1<-plot(X[,1:9])
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+PL2<-plot(X[,10:18])
+```
+
+#   Reduccion de la dimensionalidad
+
+# 1.- ACP
+## Scaling 
+### 1: datos orginales, 
+### 2: Resta la media global del conjunto de los datos, 
+### 3: Doble centrado (agricultura / interaccion de residuales)
+### 4: Centrado por columnas (variables con misma escala)
+### 5: Estandarizado por columnas 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acpvino<-PCA.Analysis(X,Scaling = 5)
+summary(acpvino)
+```
+
+
+# 2.- Contenido del objeto acpvino
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+names(acpvino)
+```
+
+# 3.- Generacion del grafico sin caja
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acp1<-plot(acpvino, ShowBox=FALSE)
+```
+
+# Screeplot con barras 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acp2<-princomp(X, cor=TRUE, score=TRUE)
+plot(acp2)
+```
+
+# Grafico circular de correlacion
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acp3<-plot(acpvino, CorrelationCircle=TRUE, 
+           ShowAxis=TRUE,  CexInd=1.5)
+```
+
+# Agregar grupos al biplot definido por usuario
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acpvino1<-AddCluster2Biplot(acpvino, ClusterType="us", 
+                          Groups = BD$grupo)
+```
+
+# Grafico con poligonos
+# CexInd= tamaño de los argumentos
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acp4<-plot(acpvino1, PlotClus=TRUE, 
+           ClustCenters=TRUE, margin=0.05, 
+           CexInd=0.7, ShowBox=TRUE)
+```
+
+# Grafico con elipses
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acp5<-plot(acpvino1, PlotClus=TRUE, ClustCenters=TRUE, 
+     margin=0.05, CexInd=0.7, TypeClus="el", 
+     ShowBox=F)
+```
+
+# Grafico con estrellas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+acp6<-plot(acpvino1, PlotClus=TRUE, ClustCenters=TRUE, 
+     margin=0.05, CexInd=0.7, TypeClus="st", 
+     ShowBox=TRUE)
+```
+
+#  Aplicacion del Biplot
+
+## alpha= 
+###  0:GH
+###  1:JK
+###  2:HJ
+
+# Predeterminado JK
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+bipvino<-PCA.Biplot(X, Scaling = 5)
+summary(bipvino)
+```
+
+# Valores propios
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+bipvino$EigenValues
+```
+
+# Screeplot
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+SC<-barplot(bipvino$EigenValues)
+```
+
+# Vectores propios
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+bipvino$EV
+```
+
+# Tabla de inercias
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+Inercias<-data.frame(paste("Eje",1:length(bipvino$EigenValues)),
+                     bipvino$EigenValues, bipvino$Inertia, 
+                     bipvino$CumInertia)
+colnames(Inercias)<-c("Eje", "Valor Propio", 
+                     "Inercia", "Inercia acumulada")
+kable(Inercias)
+```
+
+# Tabla contribucion de columnas
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+kable(bipvino$ColContributions)
+```
+
+# Grafico
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot(bipvino, ShowBox=TRUE)
+```
+
+# Prolongacion de vectores linea recta
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+BP1<-plot(bipvino, mode="s", 
+     margin=0.1, ShowBox=TRUE)
+```
+
+# Prolongacion de vectores con flechas y linea punteada
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+BP2<-plot(bipvino, mode="ah", margin=0.05, 
+     ShowBox=TRUE)
+```
+
+# Grafico circular correlaciones 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+GC<-CorrelationCircle(bipvino)
+```
+
+# Grafico contribuciones de los vectores
+# Calidad de representacion eje 1, 2 y 1+2
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ColContributionPlot(bipvino, AddSigns2Labs = FALSE)
+```
+
+# Proyeccion individuos sobre una variable  donde dp= selecciona la variable
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+BP3<-plot(bipvino, dp=2, mode="s", 
+     ColorVar=c("blue", rep("grey",17)),
+     ShowBox=TRUE)
+```
+
+# Proyeccion de ind sobre todas las variables con *PredPoints= individuo*
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+BP4<-plot(bipvino, PredPoints=1, mode="s", 
+     ColorVar=1:18, ShowBox=TRUE)
+```
+
+# Agregar cluster Jerarquico con datos originales con el metodo *ward.D*
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+bipvino=AddCluster2Biplot(bipvino, NGroups=4, 
+                          ClusterType="hi", 
+                          method="ward.D", 
+                          Original=TRUE)
+```
+
+# Cluster aplicado al biplot
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+clusBP<-plot(bipvino, PlotClus=TRUE,ShowAxis=TRUE)
+clusBP
+```
